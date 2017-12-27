@@ -75,6 +75,7 @@
     <ProjectCapability Include="VisualMicro" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
     <None Include="Esp8266_18B20_MQTT.ino">
       <FileType>CppCode</FileType>
     </None>

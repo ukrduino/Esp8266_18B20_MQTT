@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Esp8266_18B20_MQTT.ino" />
+    <None Include=".gitignore" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="__vm\.Esp8266_18B20_MQTT.vsarduino.h">
