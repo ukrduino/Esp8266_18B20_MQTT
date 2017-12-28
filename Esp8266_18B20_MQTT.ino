@@ -130,7 +130,10 @@ void sendTempLightToMqtt() {
 		float temp = sensors.getTempCByIndex(0);
 		Serial.print("Publish message temp: ");
 		Serial.println(temp);
-		client.publish("WittyCloud/temp", String(temp).c_str());
+		if (-20 < temp && temp < 50)
+		{
+			client.publish("WittyCloud/temp", String(temp).c_str());
+		}
 	}
 	if (now - lastLightMsg > 2000) {
 		lastLightMsg = now;
