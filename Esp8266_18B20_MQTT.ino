@@ -1,24 +1,25 @@
+#include "Credentials.h"
 #include <PubSubClient.h>
 #include <ESP8266WiFi.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-// Update these with values suitable for your network.
-const char* ssid = "";
-const char* password = "";
-const char* mqtt_server = "192.168.0.112";
+const char* mqtt_server = MQTT_SERVER_IP;
+WiFiClient espClient;
+unsigned long reconnectionPeriod = 60000; //miliseconds
+unsigned long lastBrokerConnectionAttempt = 0;
+unsigned long lastWifiConnectionAttempt = 0;
 
 const int GREEN_LED = 12;
 const int RELAY_PIN = 16;
 const int BUZZ_PIN = 5;
 
-WiFiClient espClient;
 PubSubClient client(espClient);
 long lastTempMsg = 0;
 long lastLightMsg = 0;
 char msg[50];
 int LDRLevel = 0;
-long tempSensorRequestPeriod = 60000;
+long tempSensorRequestPeriod = 60000; //miliseconds
 
 // Data wire is plugged into port 2 on the Arduino
 #define ONE_WIRE_BUS 14
@@ -37,31 +38,109 @@ void setup() {
 	pinMode(BUZZ_PIN, OUTPUT);
 	digitalWrite(RELAY_PIN, HIGH);
 	Serial.begin(115200);
-	setup_wifi();
 	client.setServer(mqtt_server, 1883);
 	client.setCallback(callback);
+	setup_wifi();
+}
+
+void loop() {
+	if (!client.connected()) {
+		reconnectToBroker();
+	}
+	client.loop();
+	sendTempLightToMqtt();
+}
+
+void reconnectToBroker() {
+	long now = millis();
+	if (now - lastBrokerConnectionAttempt > reconnectionPeriod) {
+		lastBrokerConnectionAttempt = now;
+		{
+			if (WiFi.status() == WL_CONNECTED)
+			{
+				if (!client.connected()) {
+					connectToBroker();
+				}
+			}
+			else
+			{
+				reconnectWifi();
+			}
+		}
+	}
 }
 
 
+//Connection to MQTT broker
+void connectToBroker() {
+	Serial.print("Attempting MQTT connection...");
+	// Attempt to connect
+	if (client.connect("WittyCloud1")) {
+		Serial.println("connected");
+		// Once connected, publish an announcement...
+		client.publish("WittyCloud1/status", "WittyCloud1 connected");
+		// ... and resubscribe
+		client.subscribe("WittyCloud1/relay");
+		client.subscribe("WittyCloud1/setReadTempPeriod");
+	}
+	else {
+		Serial.print("failed, rc=");
+		Serial.print(client.state());
+		Serial.println(" try again in 5 seconds");
+		// Wait 5 seconds before retrying
+		delay(5000);
+	}
+}
+
+void reconnectWifi() {
+	long now = millis();
+	if (now - lastWifiConnectionAttempt > reconnectionPeriod) {
+		lastWifiConnectionAttempt = now;
+		setup_wifi();
+	}
+}
+
 void setup_wifi() {
 
-	delay(50);
+	delay(500);
 	// We start by connecting to a WiFi network
-	Serial.println();
-	Serial.print("Connecting to ");
-	Serial.println(ssid);
+	int numberOfNetworks = WiFi.scanNetworks();
 
-	WiFi.begin(ssid, password);
-
-	while (WiFi.status() != WL_CONNECTED) {
-		delay(500);
-		Serial.print(".");
+	for (int i = 0; i < numberOfNetworks; i++) {
+		Serial.print("Network name: ");
+		Serial.println(WiFi.SSID(i));
+		if (WiFi.SSID(i).equals(SSID_1))
+		{
+			Serial.print("Connecting to ");
+			Serial.println(SSID_1);
+			WiFi.begin(SSID_1, PASSWORD_1);
+			delay(1000);
+			connectToBroker();
+			return;
+		}
+		else if (WiFi.SSID(i).equals(SSID_2))
+		{
+			Serial.print("Connecting to ");
+			Serial.println(SSID_2);
+			WiFi.begin(SSID_2, PASSWORD_2);
+			delay(1000);
+			connectToBroker();
+			return;
+		}
+		else if (WiFi.SSID(i).equals(SSID_3))
+		{
+			Serial.print("Connecting to ");
+			Serial.println(SSID_3);
+			WiFi.begin(SSID_3, PASSWORD_3);
+			delay(1000);
+			connectToBroker();
+			return;
+		}
+		else
+		{
+			Serial.println("Can't connect to " + WiFi.SSID(i));
+		}
 	}
-
-	Serial.println("");
-	Serial.println("WiFi connected");
-	Serial.println("IP address: ");
-	Serial.println(WiFi.localIP());
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -90,37 +169,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
 	}
 }
 
-
-void reconnect() {
-	// Loop until we're reconnected
-	while (!client.connected()) {
-		Serial.print("Attempting MQTT connection...");
-		// Attempt to connect
-		if (client.connect("WittyCloud1")) {
-			Serial.println("connected");
-			// Once connected, publish an announcement...
-			client.publish("WittyCloud1/status", "WittyCloud1 connected");
-			// ... and resubscribe
-			client.subscribe("WittyCloud1/relay");
-			client.subscribe("WittyCloud1/setReadTempPeriod");
-		}
-		else {
-			Serial.print("failed, rc=");
-			Serial.print(client.state());
-			Serial.println(" try again in 5 seconds");
-			// Wait 5 seconds before retrying
-			delay(5000);
-		}
-	}
-}
-
-void loop() {
-	if (!client.connected()) {
-		reconnect();
-	}
-	client.loop();
-	sendTempLightToMqtt();
-}
 
 void sendTempLightToMqtt() {
 	long now = millis();

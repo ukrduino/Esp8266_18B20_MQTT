@@ -22,5 +22,8 @@
     <ClInclude Include="__vm\.Esp8266_18B20_MQTT.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\Credentials.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
